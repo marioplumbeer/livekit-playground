@@ -33,3 +33,6 @@ lint:
 
 format:
 	poetry run ruff format .
+
+auth:
+	lk cloud auth

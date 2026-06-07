@@ -14,8 +14,14 @@ packages = [
   {include = "livekit_playground", from = "src"},
 ]
 
+[tool.poetry.scripts]
+inbound = "livekit_playground.cli.inbound:main"
+
 [tool.poetry.dependencies]
 pydantic = "^2.13.4"
+livekit-agents = {version = "^1.8.5", extras = ["openai"]}
+livekit-plugins-silero = "^1.5.18"
+dotenv = "^0.9.9"
 
 [tool.poetry.group.dev]
 optional = true
