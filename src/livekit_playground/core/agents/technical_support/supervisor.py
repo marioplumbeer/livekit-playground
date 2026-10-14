@@ -1,7 +1,7 @@
 from livekit.agents import Agent, RunContext, function_tool
 from livekit.agents.beta.workflows import TaskGroup
 
-from livekit_playground.core.agents.technical_support.full_duplex import UserData
+from livekit_playground.core.agents.technical_support.model import UserData
 from livekit_playground.core.agents.technical_support.tasks.contact.collect import CollectContactTask
 from livekit_playground.core.agents.technical_support.tasks.feedback.collect import FeedbackCollectTask
 from livekit_playground.core.agents.technical_support.tasks.ticket.create import TicketCreateTask
