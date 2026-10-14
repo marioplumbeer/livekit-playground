@@ -4,7 +4,7 @@ from livekit.agents.llm import DuplexSession
 from livekit_playground.core.agents.technical_support.model import UserDataContact
 
 
-class RealtimeAgent(Agent):
+class BasicAgent(Agent):
     def __init__(self, instructions: str):
         super().__init__(instructions=instructions)
 
@@ -34,7 +34,7 @@ class RealtimeAgent(Agent):
         ctx.session.userdata.ticket_number = "123456"
         await self.update_tools([self.wait_for_user, self.end_call])
 
-        context = """
+        context = f"""
             ## Ticket Details
             - User Request: {ctx.session.userdata.help_needed}
             - Ticket Number: {ctx.session.userdata.ticket_number}

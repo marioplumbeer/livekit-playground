@@ -3,7 +3,6 @@ from livekit.agents.beta.workflows import TaskGroup
 
 from livekit_playground.core.agents.technical_support.model import UserData
 from livekit_playground.core.agents.technical_support.tasks.contact.collect import CollectContactTask
-from livekit_playground.core.agents.technical_support.tasks.feedback.collect import FeedbackCollectTask
 from livekit_playground.core.agents.technical_support.tasks.ticket.create import TicketCreateTask
 
 
@@ -20,7 +19,7 @@ class SupervisorAgent(Agent):
     def userdata(self) -> UserData:
         return self.session.userdata
 
-    @function_tool(on_duplicate="reject", duplicate_scope="name")
+    @function_tool
     async def record_user_request(self, ctx: RunContext, request_summary: str) -> str:
         """
         Call immediately when the user provides a request, statement or issue.
@@ -44,7 +43,38 @@ class SupervisorAgent(Agent):
         try:
             result = await task_group
             self.userdata.ticket_number = result.task_results["create_ticket_task"].result.number
-            self.instructions += f"\n\nTicket Number: <spell>{self.userdata.ticket_number}</spell>."
-            return FeedbackCollectTask(chat_ctx=self.chat_ctx)
+            await self.update_instructions(
+                instructions=f"""
+            {self.instructions}
+
+            ## Ticket Details
+            - User Request: {request_summary}
+            - Ticket Number: <spell>{self.userdata.ticket_number}</spell>.
+            - Ticket Urgency: {result.task_results["create_ticket_task"].result.details.urgency}
+            - Ticket Impact: {result.task_results["create_ticket_task"].result.details.timeline}
+            - Ticket Timeline: {result.task_results["create_ticket_task"].result.details.timeline}
+
+            ### Next Steps
+            1. A dispatcher will assign the ticket to an appropriate support squad.
+            2. A technician will call the user back to confirm their contact details.
+            3. The user and the technician will discuss a resolution.
+            """
+            )
+
+            await self.session.generate_reply(
+                instructions="""
+                Their request has been logged. Ask if they wish to repeat the
+                ticket number or know what the next steps are.
+            """
+            )
+            return ""
         except Exception as e:
             return f"An error occurred while creating the ticket: {e}"
+
+    @function_tool
+    async def end_call(self, ctx: RunContext) -> None:
+        """
+        End the call.
+        Use when the user wants to end the call or hang up.
+        """
+        return "Promise a call back and say farewell."

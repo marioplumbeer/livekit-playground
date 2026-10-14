@@ -11,8 +11,8 @@ from livekit.agents import (
 from livekit.plugins import openai, silero
 from openai.types.realtime import RealtimeReasoning
 
+from livekit_playground.core.agents.technical_support.basic import BasicAgent
 from livekit_playground.core.agents.technical_support.model import UserData
-from livekit_playground.core.agents.technical_support.realtime import RealtimeAgent
 from livekit_playground.core.agents.technical_support.supervisor import SupervisorAgent
 
 load_dotenv()
@@ -24,8 +24,11 @@ server = AgentServer()
 @server.rtc_session()
 async def entrypoint(ctx: JobContext):
     session, agent = None, None
+    design_pattern = os.getenv("DESIGN_PATTERN")
 
-    if os.getenv("DESIGN_PATTERN") == "supervisor":
+    if design_pattern in ["supervisor", "standard"]:
+        agent_klass = SupervisorAgent if design_pattern == "supervisor" else BasicAgent
+
         session = AgentSession(
             userdata=UserData(),
             vad=silero.VAD.load(),
@@ -33,8 +36,11 @@ async def entrypoint(ctx: JobContext):
             llm=inference.LLM("openai/gpt-5.6-sol"),
             tts=inference.TTS("cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"),
         )
-        agent = SupervisorAgent(
+        agent = agent_klass(
             instructions="""
+                You are Voice AI, a calm, friendly voice assistant.
+                Never try to solve or troubleshoot the user's issue.
+
                 GENERAL GUIDELINES:
                 - Break grammar rules. Start sentences with "And," "But," or "So." Break grammar rules in the common
                 ways that people break grammar rules. Use "like" often.
@@ -75,7 +81,7 @@ async def entrypoint(ctx: JobContext):
                 - Do not troubleshoot the user's issue.
             """
         )
-    elif os.getenv("DESIGN_PATTERN") == "full_duplex":
+    elif design_pattern == "full_duplex":
         session = AgentSession[UserData](
             userdata=UserData(),
             llm=openai.realtime.GPTLiveModel(
@@ -94,7 +100,7 @@ async def entrypoint(ctx: JobContext):
                 },
             ),
         )
-        agent = RealtimeAgent(
+        agent = BasicAgent(
             # voice persona: the top-level GPT-Live instructions
             instructions="""
             You are Voice AI, a calm, friendly voice assistant.
@@ -137,7 +143,7 @@ async def entrypoint(ctx: JobContext):
             Provide updates to the user while you wait.
         """
         )
-    elif os.getenv("DESIGN_PATTERN") == "realtime":
+    elif design_pattern == "realtime":
         session = AgentSession[UserData](
             userdata=UserData(),
             llm=openai.realtime.RealtimeModel.with_azure(
@@ -146,8 +152,11 @@ async def entrypoint(ctx: JobContext):
                 reasoning=RealtimeReasoning(effort="low"),
             ),
         )
-        agent = RealtimeAgent(
+        agent = BasicAgent(
             instructions="""
+            You are Voice AI, a calm, friendly voice assistant.
+            Never try to solve or troubleshoot the user's issue.
+
             ## Reasoning
             - For direct answers, simple lookups, and short confirmations, respond quickly and do not reason.
             - For multi-step tasks, tool decisions, troubleshooting, or escalation, reason before acting.

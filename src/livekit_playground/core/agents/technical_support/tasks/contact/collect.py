@@ -16,7 +16,8 @@ class CollectContactTask(AgentTask[CollectContactTaskResult]):
     async def on_enter(self) -> None:
         await self.session.generate_reply(
             instructions="""
-                Collect the user's first name, last name, then company. In this order. One question at a time.
+                Now you need to identify the user before proceeding to the next step.
+                Go ahead and collect their first name, last name and company. In this order.
             """,
         )
 
