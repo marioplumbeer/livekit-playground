@@ -1,4 +1,5 @@
 from livekit.agents import Agent, RunContext, function_tool
+from livekit.agents.llm import DuplexSession
 
 from livekit_playground.core.agents.technical_support.model import UserDataContact
 
@@ -32,9 +33,8 @@ class RealtimeAgent(Agent):
 
         ctx.session.userdata.ticket_number = "123456"
         await self.update_tools([self.wait_for_user, self.end_call])
-        await self.update_instructions(f"""
-            {self.instructions}
 
+        context = """
             ## Ticket Details
             - User Request: {ctx.session.userdata.help_needed}
             - Ticket Number: {ctx.session.userdata.ticket_number}
@@ -45,7 +45,16 @@ class RealtimeAgent(Agent):
             1. A dispatcher will assign the ticket to an appropriate support squad.
             2. A technician will call the user back to confirm their contact details.
             3. The user and the technician will discuss a resolution.
-        """)
+        """
+
+        if isinstance(self.duplex_session, DuplexSession):
+            self.duplex_session.append_instructions(context)
+        else:
+            await self.update_instructions(f"""
+                {self.instructions}
+
+                {context}
+            """)
         return f"""
             The ticket has been created with number {ctx.session.userdata.ticket_number}.
             Ask if they wish to repeat the ticket number or know what the next steps are.

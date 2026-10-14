@@ -89,8 +89,8 @@ async def entrypoint(ctx: JobContext):
                         collecting information from the user,
                         and answer with a short result the voice model can read out.
                     """,
-                    # "reasoning": {"effort": "none"},
-                    # "text": {"verbosity": "low"},
+                    "reasoning": {"effort": "none"},
+                    "text": {"verbosity": "low"},
                 },
             ),
         )
