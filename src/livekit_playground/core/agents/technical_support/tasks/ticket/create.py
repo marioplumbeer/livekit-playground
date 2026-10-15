@@ -1,7 +1,6 @@
 from livekit.agents import AgentTask, ChatContext, RunContext, function_tool
 
 from livekit_playground.core.agents.technical_support.tasks.ticket.model import (
-    TicketDetails,
     TicketStatus,
     TicketTaskResult,
 )
@@ -12,23 +11,35 @@ TicketCreateTaskResult = TicketTaskResult
 class TicketCreateTask(AgentTask[TicketCreateTaskResult]):
     def __init__(self, chat_ctx: ChatContext = None) -> None:
         super().__init__(
-            instructions="Create a new ticket.",
+            instructions=""""
+            Your role is to create a new ticket for the user issue.
+            """,
             chat_ctx=chat_ctx,
         )
-        self._ticket = None
 
     async def on_enter(self) -> None:
-        await self.session.generate_reply()
+        await self.session.generate_reply(instructions="Continue the conversation naturally and create a new ticket.")
 
     @function_tool
-    async def create(self, ctx: RunContext, details: TicketDetails) -> None:
+    async def create_new_ticket(self, ctx: RunContext, ticket_urgency: str, ticket_timeline: str) -> None:
         """
-        Call when the customer has provided their ticket details.
+        Create a new ticket for the user.
+        Use once the user has provided the ticket details.
 
-        Collect one information at a time.
+        Ask for one argument at a time.
+        Do not ask for all four at once.
 
         Args:
-            details (TicketDetails): The ticket details provided by the customer.
+            ticket_urgency (str): The urgency of the ticket, such as critical or medium.
+            ticket_timeline (str): When did the issue start.
         """
-        self._ticket = TicketCreateTaskResult(details=details, number="123456", status=TicketStatus.OPEN, notes=[])
-        return f"The ticket has been created with number <spell>{self._ticket.number}</spell>."
+        self.complete(
+            TicketCreateTaskResult(
+                summary="something is broken with laptop",
+                urgency=ticket_urgency,
+                timeline=ticket_timeline,
+                number="123456",
+                status=TicketStatus.OPEN,
+                notes=[],
+            )
+        )

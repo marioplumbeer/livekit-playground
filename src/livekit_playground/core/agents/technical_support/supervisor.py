@@ -1,80 +1,131 @@
 from livekit.agents import Agent, RunContext, function_tool
-from livekit.agents.beta.workflows import TaskGroup
 
 from livekit_playground.core.agents.technical_support.model import UserData
 from livekit_playground.core.agents.technical_support.tasks.contact.collect import CollectContactTask
+from livekit_playground.core.agents.technical_support.tasks.ticket.add_note import TicketAddNoteTask
 from livekit_playground.core.agents.technical_support.tasks.ticket.create import TicketCreateTask
+from livekit_playground.core.agents.technical_support.tasks.ticket.lookup import TicketLookupTask
 
 
 class SupervisorAgent(Agent):
     def __init__(self, instructions: str):
-        super().__init__(instructions=instructions)
+        super().__init__(
+            instructions="""
+                You are a helpful Voice Attendant for the IT-Support company.
+
+                Route their request:
+                - For issues or problems, call log_issue.
+                - For questions about existing tickets, call lookup_ticket.
+                - For adding notes to tickets, call add_note_to_ticket.
+                - For call backs, call call_back.
+                - For escalation requests, call escalate.
+                - For resetting passwords, call reset_password.
+                - For all other enquires, answer directly from context. If the information is not available, say so.
+
+                After a tool returns, summarize the outcome and ask whether the caller needs anything else.
+            """
+        )
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions="Greet the user and ask how you can assist them.",
+            instructions="Greet the user and ask how you can help them.",
         )
 
     @property
     def userdata(self) -> UserData:
         return self.session.userdata
 
-    @function_tool
-    async def record_user_request(self, ctx: RunContext, request_summary: str) -> str:
-        """
-        Call immediately when the user provides a request, statement or issue.
-        Record the user's request once you understand what they need.
-        Use for reported issues, requests to speak with a person, or any other need.
+    async def auth_contact(self):
+        if self.userdata.contact_details is None:
+            self.userdata.contact_details = await CollectContactTask(
+                chat_ctx=self.chat_ctx.copy(exclude_instructions=True),
+            )
 
-        Args:
-            request_summary: A concise summary of what the user is asking for or reporting, including
-            relevant details they mentioned.
-        """
-        ctx.session.userdata.help_needed = request_summary
-        # TODO: figure out how to prevent the user from going back to previous step
-        task_group = TaskGroup(chat_ctx=self.chat_ctx)
-        task_group.add(
-            lambda: CollectContactTask(chat_ctx=self.chat_ctx),
-            id="collect_contact_task",
-            description="Collects the contact information from the user.",
-        )
-        task_group.add(lambda: TicketCreateTask(), id="create_ticket_task", description="Creates a new ticket.")
-
-        try:
-            result = await task_group
-            self.userdata.ticket_number = result.task_results["create_ticket_task"].result.number
-            await self.update_instructions(
+            self.update_instructions(
                 instructions=f"""
             {self.instructions}
 
-            ## Ticket Details
-            - User Request: {request_summary}
-            - Ticket Number: <spell>{self.userdata.ticket_number}</spell>.
-            - Ticket Urgency: {result.task_results["create_ticket_task"].result.details.urgency}
-            - Ticket Impact: {result.task_results["create_ticket_task"].result.details.timeline}
-            - Ticket Timeline: {result.task_results["create_ticket_task"].result.details.timeline}
-
-            ### Next Steps
-            1. A dispatcher will assign the ticket to an appropriate support squad.
-            2. A technician will call the user back to confirm their contact details.
-            3. The user and the technician will discuss a resolution.
+            # Context
+            ## Contact
+            - First Name: {self.userdata.contact_details.first_name}
+            - Last Name: {self.userdata.contact_details.last_name}
+            - Company: {self.userdata.contact_details.company}
             """
             )
 
-            await self.session.generate_reply(
-                instructions="""
-                Their request has been logged. Ask if they wish to repeat the
-                ticket number or know what the next steps are.
-            """
-            )
-            return ""
-        except Exception as e:
-            return f"An error occurred while creating the ticket: {e}"
+    @function_tool
+    async def log_issue(self) -> str:
+        """
+        Use when the user reports an issue or problem of any sorts.
+        """
+
+        await self.auth_contact()
+        ticket = await TicketCreateTask(
+            chat_ctx=self.chat_ctx.copy(exclude_instructions=True),
+        )
+        return f"Logged issue with number <spell>{ticket.number}</spell>"
+
+    @function_tool
+    async def add_note_to_ticket(self) -> str:
+        """
+        Use when the user wants to add a note to a ticket.
+        """
+
+        await self.auth_contact()
+        ticket = await TicketLookupTask(
+            chat_ctx=self.chat_ctx.copy(exclude_instructions=True),
+        )
+        await TicketAddNoteTask(
+            chat_ctx=self.chat_ctx.copy(exclude_instructions=True),
+            ticket_number=ticket.number,
+        )
+        return f"The note has been added to the ticket with number <spell>{ticket.number}</spell>"
+
+    @function_tool
+    async def lookup_ticket(self) -> str:
+        """
+        Use when the user wants to check the status of a ticket.
+        """
+
+        await self.auth_contact()
+        ticket = await TicketLookupTask(
+            chat_ctx=self.chat_ctx.copy(exclude_instructions=True),
+        )
+        return f"Ticket <spell>{ticket.number}</spell> is {ticket.status}. The latest update is {ticket.notes[-1]}"
+
+    @function_tool
+    async def call_back(self) -> str:
+        """
+        Use when the user is returning a call.
+        """
+
+        await self.auth_contact()
+        latest_update = "a technician is on site fixing your issue."
+        ticket_status = "in review"
+        issue_number = "123456"
+        return f"Ticket <spell>{issue_number}</spell> is {ticket_status}: {latest_update}"
+
+    @function_tool
+    async def escalate(self, escalation_reason: str) -> str:
+        """
+        Use when the user wants to talk to someone, such as a human, technician, person directly.
+        """
+
+        await self.auth_contact()
+        escalation_number = "123456"
+        return f"Escalated request with number <spell>{escalation_number}</spell> due to {escalation_reason}"
+
+    @function_tool
+    async def reset_password(self) -> str:
+        """
+        Use when the user wants to reset their password.
+        """
+        await self.auth_contact()
+        return "The password has been reset."
 
     @function_tool
     async def end_call(self, ctx: RunContext) -> None:
         """
-        End the call.
         Use when the user wants to end the call or hang up.
         """
         return "Promise a call back and say farewell."

@@ -7,8 +7,8 @@ class CollectContactTask(AgentTask[CollectContactTaskResult]):
     def __init__(self, chat_ctx: ChatContext = None) -> None:
         super().__init__(
             instructions="""
-            In order to help the user, we need collect their contact information.
-            Collect the contact information from the user.
+            Your role is to identify the user.
+            You should collect their contact information, such as first name, last name and company.
             """,
             chat_ctx=chat_ctx,
         )
@@ -16,15 +16,18 @@ class CollectContactTask(AgentTask[CollectContactTaskResult]):
     async def on_enter(self) -> None:
         await self.session.generate_reply(
             instructions="""
-                Now you need to identify the user before proceeding to the next step.
-                Go ahead and collect their first name, last name and company. In this order.
+                Let the user know you need to identify them.
+                Then, collect the user's first name, then last name, then company. In this order.
             """,
         )
 
     @function_tool
     async def collect_contact_information(self, first_name: str, last_name: str, company: str) -> None:
         """
+        Collect the contact details from the user.
         Use once the user has provided their first name, last name and company.
+
+        Collect their first name, then their last name, then their company. In that order.
 
         Args:
             first_name (str): The first name of the contact.

@@ -5,37 +5,36 @@ from livekit_playground.core.agents.technical_support.tasks.ticket.model import 
 TicketLookupTaskResult = TicketTaskResult
 
 
-# TODO: split between collection vs. lookup
 class TicketLookupTask(AgentTask[TicketLookupTaskResult]):
     def __init__(self, chat_ctx: ChatContext = None) -> None:
         super().__init__(
-            instructions="Look up an existing ticket by summary or number.",
+            instructions="""
+            Your role is to look up an existing ticket.
+            """,
             chat_ctx=chat_ctx,
         )
 
     async def on_enter(self):
-        await self.session.generate_reply()
-
-    @function_tool
-    async def find_by_summary(self, summary: str) -> None:
-        """
-        Call when the customer has provided their ticket summary.
-
-        Args:
-            summary (str): The ticket summary provided by the customer.
-        """
-        result = TicketLookupTaskResult(details=summary, number="1", status=TicketStatus.OPEN, notes=[])
-        self.complete(result=result)
-
-    @function_tool
-    async def find_by_number(self, number: str) -> None:
-        """
-        Call when the customer has provided their ticket number.
-
-        Args:
-            number (str): The ticket number provided by the customer.
-        """
-        result = TicketLookupTaskResult(
-            details="Laptop not turning on", number=number, status=TicketStatus.OPEN, notes=[]
+        await self.session.generate_reply(
+            instructions="Ask for the ticket summary or number.",
         )
-        self.complete(result=result)
+
+    @function_tool
+    async def ticket_details_collected(self, summary: str | None, number: str | None) -> None:
+        """
+        Call when the customer has provided their ticket summary or number
+        """
+        self.complete(
+            result=TicketLookupTaskResult(
+                summary=summary or "laptop is broken",
+                urgency="critical",
+                timeline="started last week",
+                number=number or "123456",
+                notes=[
+                    "tech on site",
+                    "cable repaired",
+                    "pending order update",
+                ],
+                status=TicketStatus.OPEN,
+            )
+        )

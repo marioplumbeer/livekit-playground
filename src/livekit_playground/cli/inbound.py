@@ -6,9 +6,8 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     cli,
-    inference,
 )
-from livekit.plugins import openai, silero
+from livekit.plugins import azure, cartesia, openai, silero
 from openai.types.realtime import RealtimeReasoning
 
 from livekit_playground.core.agents.technical_support.basic import BasicAgent
@@ -32,9 +31,21 @@ async def entrypoint(ctx: JobContext):
         session = AgentSession(
             userdata=UserData(),
             vad=silero.VAD.load(),
-            stt=inference.STT("deepgram/nova-3", language="multi"),
-            llm=inference.LLM("openai/gpt-5.6-sol"),
-            tts=inference.TTS("cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"),
+            stt=azure.stt.STT(
+                speech_key=os.getenv("STT_SPEECH_KEY"),
+                speech_region="eastus",
+                language="en-US",
+            ),
+            llm=openai.LLM.with_azure(
+                azure_deployment="gpt-5.6-sol",
+                api_version="2023-12-01-preview",
+                api_key=os.getenv("LLM_API_KEY"),
+                azure_endpoint="https://ai-stage-03.openai.azure.com/",
+            ),
+            tts=cartesia.TTS(
+                api_key=os.getenv("TTS_API_KEY"),
+                model="sonic-3",
+            ),
         )
         agent = agent_klass(
             instructions="""
@@ -80,13 +91,19 @@ async def entrypoint(ctx: JobContext):
                 - Turn 4: "Right, <break time="200ms"/> here's what I'm seeing."
 
                 THINGS TO AVOID:
-                - Do not output bullet points, numbered lists, or any structured formatting. Speak items naturally
-                with pauses between them, and do not say "here's a list."
+                - Do not output bullet points, numbered lists, or any structured formatting.
+                - Speak items naturally with pauses between them, and do not say "here's a list."
                 - Do not use asterisks, hashtags, or markdown syntax. Do not wrap words in **bold** or *italics* —
                 the engine will speak the asterisks.
                 - Do not improvise details that were not provided.
                 - Do not repeat the same information more than once unless asked.
                 - Do not troubleshoot the user's issue.
+
+                TOOLS:
+                Call tools in the following scenarios:
+                - The user describes their problem / issue.
+                - The user provides their contact details, such as first name, last name and company.
+                - The user describes their problem / issue's urgency and timeline.
             """
         )
     elif design_pattern == "full_duplex":
