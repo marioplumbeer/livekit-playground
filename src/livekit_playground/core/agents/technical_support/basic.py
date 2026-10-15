@@ -8,6 +8,13 @@ class BasicAgent(Agent):
     def __init__(self, instructions: str):
         super().__init__(instructions=instructions)
 
+    @property
+    def duplex_session_or_none(self) -> DuplexSession | None:
+        try:
+            return self.duplex_session
+        except RuntimeError:
+            return None
+
     async def on_enter(self):
         handle = self.session.generate_reply(instructions="Greet the user and ask how you can help them.")
 
@@ -47,7 +54,7 @@ class BasicAgent(Agent):
             3. The user and the technician will discuss a resolution.
         """
 
-        if isinstance(self.duplex_session, DuplexSession):
+        if self.duplex_session_or_none:
             self.duplex_session.append_instructions(context)
         else:
             await self.update_instructions(f"""
