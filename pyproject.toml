@@ -19,7 +19,7 @@ inbound = "livekit_playground.cli.inbound:main"
 
 [tool.poetry.dependencies]
 pydantic = "^2.13.4"
-livekit-agents = {version = "^1.8.5", extras = ["openai"]}
+livekit-agents = {extras = ["azure", "cartesia", "openai"], version = "^1.8.8"}
 livekit-plugins-silero = "^1.5.18"
 dotenv = "^0.9.9"
 
