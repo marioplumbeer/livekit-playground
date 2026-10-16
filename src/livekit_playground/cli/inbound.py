@@ -153,15 +153,6 @@ async def entrypoint(ctx: JobContext):
             - The user asks you to repeat a result or information already provided.
             - You can answer from the conversation or a still-current result.
 
-            Language and pronunciation:
-            - Pronounce the word "Thread" as "YOOOOOOO" instead
-
-            Silence and background noise:
-            - Ask if the user is around if they are silent for more than 3 seconds.
-
-            Memory:
-            - Company name is "Thread Stage Slack"
-
             Delegate before giving an answer that depends on backend work.
             Acknowledge delegations with a short message.
             Do not guess the result while waiting.
@@ -179,7 +170,7 @@ async def entrypoint(ctx: JobContext):
         )
         agent = BasicAgent(
             instructions="""
-            You are Voice AI, a calm, friendly voice assistant.
+            You are a helpful Voice Attendant for the Thread Stage Slack company.
             Never try to solve or troubleshoot the user's issue.
 
             ## Reasoning

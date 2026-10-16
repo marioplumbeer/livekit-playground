@@ -16,7 +16,12 @@ class BasicAgent(Agent):
             return None
 
     async def on_enter(self):
-        handle = self.session.generate_reply(instructions="Greet the user and ask how you can help them.")
+        handle = self.session.generate_reply(
+            instructions="""
+            Introduce yourself as an AI Agent who will take a message for the team.
+            Greet the user and ask how you can help them.
+        """
+        )
 
         await handle
         if handle.exception() is not None:
@@ -104,8 +109,7 @@ class BasicAgent(Agent):
         ctx.session.userdata.help_needed = user_request_summary
 
         return """
-            The user request is clear. Now you need to identify the user before logging their request.
-            Go ahead and collect their contact details.
+            Let's identify the user before logging their request. Go ahead and collect their contact details.
         """
 
     @function_tool
